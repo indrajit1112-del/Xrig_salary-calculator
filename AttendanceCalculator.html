@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline Attendance & Salary Calculator</title>
+    <!-- Include html2pdf library for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --primary: #3b82f6; --primary-hover: #2563eb;
+            --danger: #ef4444; --danger-hover: #dc2626; --danger-bg: #fef2f2;
+            --success: #10b981; --success-bg: #ecfdf5;
+            --text: #1f2937; --bg: #f3f4f6; --card-bg: #ffffff;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .header-section { display: flex; justify-content: space-between; align-items: center; max-width: 1000px; margin: 0 auto 10px auto; }
+        .container { max-width: 1000px; margin: 0 auto; background: var(--card-bg); padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        h1 { text-align: center; margin-top: 0; color: #111827; flex-grow: 1; }
+        .btn-settings { background-color: #4b5563; color: white; border: none; padding: 10px 16px; font-size: 15px; font-weight: 600; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn-settings:hover { background-color: #374151; }
+        
+        textarea { width: 100%; height: 150px; padding: 15px; font-family: monospace; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; resize: vertical; font-size: 14px; }
+        textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+        
+        .controls { display: flex; align-items: center; justify-content: space-between; margin: 20px 0; padding: 15px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; flex-wrap: wrap; gap: 15px; }
+        .toggle-container { display: flex; align-items: center; gap: 12px; font-weight: 500; }
+        .switch { position: relative; display: inline-block; width: 48px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #d1d5db; transition: .3s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--danger); }
+        input:checked + .slider:before { transform: translateX(24px); }
+        
+        .month-selector { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+        .month-selector input { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-family: inherit; font-size: 14px; }
+        
+        button.primary { background-color: var(--primary); color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        button.primary:hover { background-color: var(--primary-hover); }
+        
+        .results { margin-top: 30px; }
+        /* Card Styles */
+        .card { border: 1px solid #e5e7eb; padding: 25px; margin-bottom: 25px; border-radius: 8px; background: #fff; width: 100%; box-sizing: border-box; }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #f3f4f6; padding-bottom: 15px; margin-bottom: 20px; }
+        .card-header h3 { margin: 0; color: #111827; font-size: 24px; }
+        .salary-summary { text-align: right; font-size: 14px; color: #4b5563; }
+        .salary-summary strong { color: var(--success); font-size: 24px; display: block; margin-top: 4px; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .stat-box { background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px 10px; text-align: center; border-radius: 6px; }
+        .stat-box span { display: block; font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; }
+        .stat-box strong { display: block; font-size: 24px; color: #111827; }
+        
+        .highlight-danger { background-color: var(--danger-bg); border-color: #fca5a5; }
+        .highlight-danger span, .highlight-danger strong { color: var(--danger); }
+        
+        .calculation-details { background: #f8fafc; padding: 15px; border-radius: 6px; font-size: 14px; color: #475569; border: 1px dashed #cbd5e1; }
+        
+        /* New Authentic Calendar Styles */
+        .calendar-view { display: none; margin-top: 25px; width: 100%; box-sizing: border-box; }
+        .real-calendar { padding: 20px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; width: 100%; box-sizing: border-box; }
+        .cal-top { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; }
+        .cal-month { font-size: 32px; font-weight: 900; text-transform: uppercase; color: #111827; letter-spacing: 1px; line-height: 1; }
+        .cal-year { font-size: 32px; font-weight: 900; color: #111827; line-height: 1; }
+        
+        .cal-header-row { display: flex; background: #fbbf24; border-radius: 4px 4px 0 0; border: 1px solid #fbbf24; width: 100%; box-sizing: border-box; }
+        .cal-header-row div { flex: 1 1 0; box-sizing: border-box; text-align: center; font-weight: 800; font-size: 11px; padding: 10px 0; color: #000; }
+        
+        .cal-body { display: flex; flex-wrap: wrap; border-left: 1px solid #f3f4f6; border-top: none; width: 100%; box-sizing: border-box; }
+        .cal-cell { 
+            flex: 0 0 14.2857%; width: 14.2857%; box-sizing: border-box; min-height: 70px; 
+            border-right: 1px solid #f3f4f6; border-bottom: 1px solid #f3f4f6; 
+            padding: 8px; display: flex; flex-direction: column; background: #fff;
+        }
+        .empty-cell { background: #fafafa; }
+        .cal-date { font-size: 16px; font-weight: 900; color: #374151; }
+        .cal-stat { flex-grow: 1; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; }
+        .cal-time { font-size: 11px; text-align: center; color: #6b7280; font-weight: 600; min-height: 14px; }
+        
+        .c-p .cal-stat { color: #10b981; } 
+        .c-a .cal-stat { color: #ef4444; } 
+        .c-late .cal-stat { color: #b91c1c; } 
+        .c-late .cal-time { color: #ef4444; }
+        .c-wo .cal-stat { color: #9ca3af; } 
+        .c-h .cal-stat { color: #3b82f6; } 
+        .c-hd .cal-stat { color: #f59e0b; } 
+
+        .legend-box { display: flex; justify-content: center; gap: 20px; margin-top: 20px; flex-wrap: wrap; font-size: 13px; font-weight: 600; color: #4b5563; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; }
+        .bg-p { background: #10b981; }
+        .bg-a { background: #ef4444; }
+        .bg-late { background: #b91c1c; }
+        .bg-wo { background: #9ca3af; }
+        .bg-h { background: #3b82f6; }
+        
+        .card-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+        .btn-calendar { background-color: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn-calendar:hover { background-color: #e5e7eb; }
+        .btn-pdf { background-color: #10b981; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn-pdf:hover { background-color: #059669; }
+
+        /* Modal Styles */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal { background: white; padding: 25px; border-radius: 10px; width: 95%; max-width: 800px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h2 { margin: 0; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; }
+        
+        .settings-section h3 { margin-top: 0; font-size: 16px; color: #374151; margin-bottom: 15px; }
+        table.settings-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        table.settings-table th, table.settings-table td { padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+        table.settings-table th { font-size: 14px; color: #4b5563; }
+        table.settings-table input, table.settings-table select { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; box-sizing: border-box; }
+        .btn-danger { background-color: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+        .btn-danger:hover { background-color: var(--danger-hover); }
+        .modal-footer { display: flex; justify-content: space-between; margin-top: 25px; padding-top: 20px; border-top: 2px solid #f3f4f6; flex-wrap: wrap; gap: 15px; }
+        .btn-secondary { background-color: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .btn-secondary:hover { background-color: #e5e7eb; }
+        
+    </style>
+</head>
+<body>
+
+<div class="header-section">
+    <div style="width: 100px;"></div>
+    <h1>Attendance & Salary Calculator</h1>
+    <button class="btn-settings" onclick="openSettings()">⚙️ Settings & Groups</button>
+</div>
+
+<div class="container">
+    <textarea id="pasteArea" placeholder="Paste your Excel data here... (We will auto-detect the Month & Year if included!)"></textarea>
+
+    <div class="controls">
+        <label class="toggle-container" title="If enabled, Late Rules for each Group will be applied.">
+            <div class="switch">
+                <input type="checkbox" id="lateToggle">
+                <span class="slider"></span>
+            </div>
+            Enable Late Penalty (Uses Group Rules)
+        </label>
+        
+        <div class="month-selector">
+            <label>Report Month:</label>
+            <input type="month" id="reportMonth" title="Select the month to generate the accurate calendar">
+        </div>
+
+        <button class="primary" onclick="processData()">Calculate Salary</button>
+    </div>
+
+    <div id="results" class="results"></div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModalOverlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>⚙️ Salary & Group Settings</h2>
+            <button class="close-btn" onclick="closeSettings()">&times;</button>
+        </div>
+        
+        <!-- Group Section -->
+        <div class="settings-section">
+            <h3>👥 Groups & Late Rules</h3>
+            <p style="font-size: 13px; color: #6b7280; margin-top: -10px; margin-bottom: 15px;">Create groups and set their specific Late Entry cutoff times.</p>
+            <table class="settings-table">
+                <thead>
+                    <tr>
+                        <th>Group Name</th>
+                        <th style="width: 140px;">Late After (Time)</th>
+                        <th style="width: 80px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="groupsTableBody"></tbody>
+            </table>
+            <button class="btn-secondary" style="font-size:12px; padding:6px 12px;" onclick="addGroupRow()">+ Add New Group</button>
+        </div>
+        
+        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 25px 0;">
+        
+        <!-- Employee Section -->
+        <div class="settings-section">
+            <h3>👤 Employees</h3>
+            <p style="font-size: 13px; color: #6b7280; margin-top: -10px; margin-bottom: 15px;">Assign employees to groups to enforce their specific late rules.</p>
+            <table class="settings-table">
+                <thead>
+                    <tr>
+                        <th>Employee Name</th>
+                        <th style="width: 130px;">Monthly Salary</th>
+                        <th style="width: 180px;">Assigned Group</th>
+                        <th style="width: 80px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="settingsTableBody"></tbody>
+            </table>
+            <button class="btn-secondary" style="font-size:12px; padding:6px 12px;" onclick="addEmployeeRow()">+ Add Person</button>
+        </div>
+        
+        <div class="modal-footer">
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-secondary" onclick="exportSettings()">📤 Export JSON</button>
+                <button class="btn-secondary" onclick="triggerImport()">📥 Import JSON</button>
+                <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importSettings(event)">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="primary" onclick="saveSettingsFromUI()">Save All Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- Auto-detect Month from Paste ---
+    document.getElementById('pasteArea').addEventListener('input', function() {
+        const text = this.value;
+        const match = text.match(/([A-Za-z]+)\s+\d{1,2}\s+(\d{4})/i);
+        if (match) {
+            const mName = match[1];
+            const year = match[2];
+            const d = new Date(Date.parse(mName + " 1, " + year));
+            if (!isNaN(d)) {
+                const mIndex = d.getMonth() + 1;
+                document.getElementById('reportMonth').value = `${year}-${mIndex.toString().padStart(2, '0')}`;
+            }
+        }
+    });
+
+    window.onload = function() {
+        const today = new Date();
+        document.getElementById('reportMonth').value = `${today.getFullYear()}-${(today.getMonth()+1).toString().padStart(2, '0')}`;
+    };
+
+    // --- Data Model Migration & Storage ---
+    function loadSettings() {
+        let s = JSON.parse(localStorage.getItem('salarySettings'));
+        if (!s) return { employees: {}, groups: {} };
+        
+        // Migrate old flat format to new object format
+        if (!s.employees && !s.groups) { 
+            let migrated = { employees: {}, groups: {} };
+            for (let k in s) {
+                migrated.employees[k] = { salary: s[k], groupId: '' };
+            }
+            return migrated;
+        }
+        return s;
+    }
+    
+    function saveSettings(settingsObj) { 
+        localStorage.setItem('salarySettings', JSON.stringify(settingsObj)); 
+    }
+
+    // --- Modal Rendering & Logic ---
+    function getSettingsFromDOM() {
+        const newSettings = { employees: {}, groups: {} };
+        
+        const gRows = document.querySelectorAll('#groupsTableBody tr');
+        gRows.forEach(row => {
+            const nameInput = row.querySelector('.group-name');
+            if (!nameInput) return; // Safeguard against empty message placeholder row
+            
+            const id = row.dataset.id;
+            const name = nameInput.value;
+            const time = row.querySelector('.group-time').value;
+            newSettings.groups[id] = { name: name, lateTime: time };
+        });
+        
+        const eRows = document.querySelectorAll('#settingsTableBody tr');
+        eRows.forEach((row, idx) => {
+            const nameInput = row.querySelector('.setting-name');
+            if (!nameInput) return; // Safeguard
+            
+            const name = nameInput.value;
+            const salary = row.querySelector('.setting-salary').value;
+            const groupId = row.querySelector('.setting-group').value;
+            
+            let key = name;
+            // Use temporary keys for empty names so they don't overwrite each other in the UI
+            if (name.trim() === '') key = '___EMPTY___' + idx;
+            
+            newSettings.employees[key] = { salary: salary, groupId: groupId };
+        });
+        
+        return newSettings;
+    }
+
+    function renderSettingsModal(settingsObj) {
+        const gBody = document.getElementById('groupsTableBody');
+        const eBody = document.getElementById('settingsTableBody');
+        gBody.innerHTML = ''; 
+        eBody.innerHTML = '';
+        
+        // Render Groups
+        let gCount = 0;
+        for(let id in settingsObj.groups) {
+            gCount++;
+            let g = settingsObj.groups[id];
+            gBody.innerHTML += `
+                <tr data-id="${id}">
+                    <td><input type="text" class="group-name" value="${g.name}" placeholder="Group Name (e.g. Sales)"></td>
+                    <td><input type="time" class="group-time" value="${g.lateTime}"></td>
+                    <td><button class="btn-danger" onclick="deleteGroup('${id}')">Delete</button></td>
+                </tr>
+            `;
+        }
+        if(gCount === 0) {
+            gBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#9ca3af; font-size: 13px;">No groups created yet. Click "+ Add New Group" to begin.</td></tr>`;
+        }
+        
+        // Render Employees
+        let eCount = 0;
+        for(let nameKey in settingsObj.employees) {
+            eCount++;
+            let e = settingsObj.employees[nameKey];
+            
+            // Clean up temporary keys for display
+            let displayVal = nameKey.startsWith('___EMPTY___') ? '' : nameKey;
+            
+            // Build Dropdown
+            let selectHTML = `<select class="setting-group"><option value="">Uncategorized (11:00 AM)</option>`;
+            for(let gid in settingsObj.groups) {
+                let g = settingsObj.groups[gid];
+                if (g.name.trim() !== '') {
+                    let selected = (e.groupId === gid) ? 'selected' : '';
+                    selectHTML += `<option value="${gid}" ${selected}>${g.name} (${g.lateTime})</option>`;
+                }
+            }
+            selectHTML += `</select>`;
+            
+            eBody.innerHTML += `
+                <tr>
+                    <td><input type="text" class="setting-name" value="${displayVal}" placeholder="Exact Employee Name"></td>
+                    <td><input type="number" class="setting-salary" value="${e.salary}" placeholder="Salary"></td>
+                    <td>${selectHTML}</td>
+                    <td><button class="btn-danger" onclick="deleteEmployee(this)">Remove</button></td>
+                </tr>
+            `;
+        }
+        if(eCount === 0) {
+            eBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#9ca3af; font-size: 13px;">No employees added manually. (Excel paste adds them automatically)</td></tr>`;
+        }
+    }
+
+    function deleteGroup(id) {
+        let temp = getSettingsFromDOM();
+        delete temp.groups[id];
+        // Move people back to Uncategorized safely
+        for(let emp in temp.employees) {
+            if(temp.employees[emp].groupId === id) temp.employees[emp].groupId = '';
+        }
+        renderSettingsModal(temp);
+    }
+    
+    function deleteEmployee(btn) {
+        btn.parentElement.parentElement.remove();
+    }
+
+    function addGroupRow() {
+        let temp = getSettingsFromDOM();
+        let newId = 'grp_' + Date.now();
+        temp.groups[newId] = { name: 'New Group', lateTime: '11:00' };
+        renderSettingsModal(temp);
+    }
+
+    function addEmployeeRow() {
+        let temp = getSettingsFromDOM();
+        let newKey = '___EMPTY___' + Date.now();
+        temp.employees[newKey] = { salary: '', groupId: '' }; 
+        renderSettingsModal(temp);
+    }
+
+    function openSettings() {
+        const settings = loadSettings();
+        renderSettingsModal(settings);
+        document.getElementById('settingsModalOverlay').style.display = 'flex';
+    }
+    function closeSettings() { 
+        document.getElementById('settingsModalOverlay').style.display = 'none'; 
+    }
+
+    function saveSettingsFromUI() {
+        const tempSettings = getSettingsFromDOM();
+        const finalSettings = { employees: {}, groups: {} };
+        
+        // Filter out empty group names
+        for(let id in tempSettings.groups) {
+            let g = tempSettings.groups[id];
+            if(g.name.trim() !== '') {
+                finalSettings.groups[id] = g;
+            }
+        }
+        
+        // Filter out empty employee names
+        for(let key in tempSettings.employees) {
+            if(!key.startsWith('___EMPTY___') && key.trim() !== '') {
+                let e = tempSettings.employees[key];
+                finalSettings.employees[key.trim()] = {
+                    salary: parseFloat(e.salary) || 0,
+                    groupId: e.groupId
+                };
+            }
+        }
+        
+        saveSettings(finalSettings);
+        closeSettings();
+        if (document.getElementById('pasteArea').value.trim() !== '') processData();
+    }
+
+    function exportSettings() {
+        const tempSettings = getSettingsFromDOM();
+        // Clean before export
+        const finalSettings = { employees: {}, groups: {} };
+        for(let id in tempSettings.groups) {
+            if(tempSettings.groups[id].name.trim() !== '') finalSettings.groups[id] = tempSettings.groups[id];
+        }
+        for(let key in tempSettings.employees) {
+            if(!key.startsWith('___EMPTY___') && key.trim() !== '') {
+                finalSettings.employees[key.trim()] = {
+                    salary: parseFloat(tempSettings.employees[key].salary) || 0,
+                    groupId: tempSettings.employees[key].groupId
+                };
+            }
+        }
+        
+        const dataStr = JSON.stringify(finalSettings, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = "salary_settings.json";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+    
+    function triggerImport() { document.getElementById('importFile').click(); }
+    
+    function importSettings(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                if (typeof importedData === 'object' && importedData !== null) {
+                    // Check for old flat format during import
+                    let finalImport = importedData;
+                    if(!importedData.employees && !importedData.groups) {
+                        finalImport = { employees: {}, groups: {} };
+                        for (let k in importedData) {
+                            finalImport.employees[k] = { salary: importedData[k], groupId: '' };
+                        }
+                    }
+                    saveSettings(finalImport);
+                    alert('Settings imported successfully!');
+                    openSettings(); 
+                    if (document.getElementById('pasteArea').value.trim() !== '') processData();
+                } else { alert('Invalid settings file format.'); }
+            } catch (err) { alert('Error reading the file.'); }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    // --- Data Processing ---
+    function processData() {
+        const text = document.getElementById('pasteArea').value;
+        const strictMode = document.getElementById('lateToggle').checked;
+        const resultsDiv = document.getElementById('results');
+        
+        if (!text.trim()) {
+            resultsDiv.innerHTML = '<div style="color:var(--danger); text-align:center;">Please paste some Excel data first.</div>';
+            return;
+        }
+
+        const reportMonthVal = document.getElementById('reportMonth').value;
+        let offset = 0;
+        let monthNameStr = "MONTH";
+        let yearStr = "YEAR";
+        if (reportMonthVal) {
+            const [y, m] = reportMonthVal.split('-');
+            const d = new Date(y, m - 1, 1);
+            let dayOfWeek = d.getDay(); 
+            offset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; 
+            monthNameStr = d.toLocaleString('en-US', { month: 'long' });
+            yearStr = y;
+        }
+
+        const lines = text.split('\n').map(l => l.replace(/\r$/, ''));
+        let employees = [];
+        let currentEmp = { name: "Unknown Employee", statuses: [], inTimes: [] };
+        let foundStatus = false;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            let empNameMatch = line.match(/Emp\.\s*Name:\s*([^\t]+)/i);
+            if (empNameMatch && empNameMatch[1].trim() !== '') {
+                currentEmp.name = empNameMatch[1].trim();
+            }
+
+            if (line.trim().startsWith('Status')) {
+                currentEmp.statuses = line.includes('\t') ? line.split('\t') : line.split(/\s{2,}/);
+                foundStatus = true;
+            } else if (line.trim().startsWith('InTime') && foundStatus) {
+                currentEmp.inTimes = line.includes('\t') ? line.split('\t') : line.split(/\s{2,}/);
+                employees.push({...currentEmp});
+                currentEmp = { name: "Unknown Employee", statuses: [], inTimes: [] };
+                foundStatus = false;
+            }
+        }
+
+        if (employees.length === 0) {
+            resultsDiv.innerHTML = '<div style="color:var(--danger); text-align:center;">Could not find valid Status and InTime rows.</div>';
+            return;
+        }
+
+        let settings = loadSettings();
+        let settingsUpdated = false;
+        
+        employees.forEach(emp => {
+            if (!settings.employees[emp.name]) {
+                settings.employees[emp.name] = { salary: 0, groupId: '' };
+                settingsUpdated = true;
+            }
+        });
+        if (settingsUpdated) saveSettings(settings);
+
+        let resultsHTML = '';
+        let totalDisbursedSalary = 0;
+
+        employees.forEach((emp, index) => {
+            let stats = { WO: 0, H: 0, A: 0, P: 0, LateA: 0, HD: 0 };
+            let validDaysCount = 0;
+            
+            let calendarHTML = `
+                <div class="real-calendar">
+                    <div class="cal-top">
+                        <div class="cal-month">${monthNameStr}</div>
+                        <div class="cal-year">${yearStr}</div>
+                    </div>
+                    <div class="cal-header-row">
+                        <div>MONDAY</div><div>TUESDAY</div><div>WEDNESDAY</div><div>THURSDAY</div><div>FRIDAY</div><div>SATURDAY</div><div>SUNDAY</div>
+                    </div>
+                    <div class="cal-body">
+            `;
+            
+            for (let i = 0; i < offset; i++) {
+                calendarHTML += `<div class="cal-cell empty-cell"></div>`;
+            }
+            
+            // --- Group Based Late Logic ---
+            let empGroup = settings.employees[emp.name] ? settings.employees[emp.name].groupId : '';
+            let cutoffHrs = 11;
+            let cutoffMins = 0;
+            let ruleName = "Default (11:00 AM)";
+            
+            if (empGroup && settings.groups[empGroup]) {
+                let timeStr = settings.groups[empGroup].lateTime;
+                ruleName = `${settings.groups[empGroup].name} (${timeStr})`;
+                if(timeStr) {
+                    let cParts = timeStr.split(':');
+                    cutoffHrs = parseInt(cParts[0], 10);
+                    cutoffMins = parseInt(cParts[1], 10);
+                }
+            }
+            
+            for (let j = 1; j < emp.statuses.length; j++) {
+                let s = emp.statuses[j] ? emp.statuses[j].trim().toUpperCase() : '';
+                let t = emp.inTimes[j] ? emp.inTimes[j].trim() : '';
+                
+                if (!s) continue; 
+                validDaysCount++;
+
+                let isLate = false;
+                if (strictMode && t && t.includes(':')) {
+                    let parts = t.split(':');
+                    if (parts.length >= 2) {
+                        let hrs = parseInt(parts[0], 10);
+                        let mins = parseInt(parts[1], 10);
+                        if (hrs > cutoffHrs || (hrs === cutoffHrs && mins > cutoffMins)) {
+                            isLate = true;
+                        }
+                    }
+                }
+
+                let displayStatus = s;
+                let cssClass = '';
+
+                if (s === 'P' || s === 'WOP') {
+                    if (isLate) { 
+                        stats.LateA++; // Only increment LateA, do not sum with regular Absents
+                        displayStatus = 'LATE';
+                        cssClass = 'c-late';
+                    } else { 
+                        stats.P++; 
+                        displayStatus = 'P';
+                        cssClass = 'c-p';
+                    }
+                } else if (s === 'A') {
+                    stats.A++; cssClass = 'c-a'; displayStatus = 'A';
+                } else if (s === 'H') {
+                    stats.H++; cssClass = 'c-h'; displayStatus = 'H';
+                } else if (s === 'WO') {
+                    stats.WO++; cssClass = 'c-wo'; displayStatus = 'WO';
+                } else if (s === 'HD') { 
+                    stats.HD++; cssClass = 'c-hd'; displayStatus = 'HD';
+                }
+
+                calendarHTML += `
+                    <div class="cal-cell ${cssClass}">
+                        <div class="cal-date">${validDaysCount.toString().padStart(2, '0')}</div>
+                        <div class="cal-stat">${displayStatus}</div>
+                        <div class="cal-time">${t ? t : ''}</div>
+                    </div>
+                `;
+            }
+
+            let totalCells = offset + validDaysCount;
+            let remaining = (7 - (totalCells % 7)) % 7;
+            for (let i = 0; i < remaining; i++) {
+                calendarHTML += `<div class="cal-cell empty-cell"></div>`;
+            }
+            
+            calendarHTML += `</div>`;
+            
+            calendarHTML += `
+                <div class="legend-box">
+                    <div class="legend-item"><div class="dot bg-p"></div> Present (P)</div>
+                    <div class="legend-item"><div class="dot bg-a"></div> Absent (A)</div>
+                    <div class="legend-item"><div class="dot bg-late"></div> Late (LATE)</div>
+                    <div class="legend-item"><div class="dot bg-wo"></div> Week Off (WO)</div>
+                    <div class="legend-item"><div class="dot bg-h"></div> Holiday (H)</div>
+                </div>
+            </div>`;
+
+            let monthlySalary = settings.employees[emp.name] ? settings.employees[emp.name].salary : 0;
+            let perDaySalary = validDaysCount > 0 ? (monthlySalary / validDaysCount) : 0;
+            let payableDays = stats.P + stats.WO + stats.H + (stats.HD * 0.5);
+            
+            let exactSalary = payableDays * perDaySalary;
+            let earnedSalary = Math.round(exactSalary);
+            
+            totalDisbursedSalary += earnedSalary;
+
+            resultsHTML += `
+                <div class="card" id="emp-card-${index}">
+                    <div class="card-header">
+                        <h3>${emp.name}</h3>
+                        <div class="salary-summary">
+                            Calculated Payable Salary
+                            <strong>₹${earnedSalary.toLocaleString('en-IN')}</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-box"><span>Present (P)</span><strong>${stats.P}</strong></div>
+                        <div class="stat-box"><span>Absent (A)</span><strong>${stats.A}</strong></div>
+                        <div class="stat-box"><span>Week Off (WO)</span><strong>${stats.WO}</strong></div>
+                        <div class="stat-box"><span>Holiday (H)</span><strong>${stats.H}</strong></div>
+                        ${stats.HD > 0 ? `<div class="stat-box"><span>Half Day (HD)</span><strong>${stats.HD}</strong></div>` : ''}
+                        ${strictMode ? `<div class="stat-box highlight-danger"><span>Late Absents</span><strong>${stats.LateA}</strong></div>` : ''}
+                    </div>
+
+                    <div class="calculation-details">
+                        <b>Calculation Breakdown:</b><br>
+                        • Total Tracked Days in Month: ${validDaysCount}<br>
+                        • Full Monthly Salary: ₹${monthlySalary.toLocaleString('en-IN')}<br>
+                        • Per Day Salary (Monthly / Total Days): ₹${perDaySalary.toFixed(2)}<br>
+                        • Payable Days (P + WO + H + 0.5*HD): ${payableDays}<br>
+                        ${strictMode ? `• Late Penalty Rule Applied: <b>${ruleName}</b><br>` : ''}
+                        • Final Math: ${payableDays} days × ₹${perDaySalary.toFixed(2)} = ₹${exactSalary.toFixed(2)} ➔ <b>₹${earnedSalary.toLocaleString('en-IN')} (Rounded)</b>
+                    </div>
+                    
+                    <div class="calendar-view" id="cal-${index}">
+                        ${calendarHTML}
+                    </div>
+
+                    <div class="card-actions" id="actions-${index}">
+                        <button class="btn-calendar" onclick="toggleCalendar(${index})">📅 Show Calendar</button>
+                        <button class="btn-pdf" onclick="exportPDF(${index}, '${emp.name}')">📄 Download PDF</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        let finalHTML = `
+            <style>
+                .results-layout { display: flex; gap: 25px; align-items: flex-start; }
+                .cards-col { flex: 1; min-width: 0; }
+                .sidebar-col { width: 300px; position: sticky; top: 20px; background: #f8fafc; padding: 25px; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+                @media (max-width: 850px) {
+                    .results-layout { flex-direction: column-reverse; }
+                    .sidebar-col { width: 100%; position: static; box-sizing: border-box; margin-bottom: 25px; }
+                }
+            </style>
+            <div class="results-layout">
+                <div class="cards-col">
+                    ${resultsHTML}
+                </div>
+                <div class="sidebar-col">
+                    <h3 style="margin-top:0; border-bottom: 2px solid #e2e8f0; padding-bottom:10px; color:#0f172a;">Monthly Summary</h3>
+                    
+                    <div style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                        <span style="display: block; font-size: 12px; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 5px;">Total Employees</span>
+                        <strong style="font-size: 32px; color: #0f172a;">${employees.length}</strong>
+                    </div>
+                    
+                    <div style="background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                        <span style="display: block; font-size: 12px; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 5px;">Total Disbursed Salary</span>
+                        <strong style="font-size: 26px; color: #10b981;">₹${totalDisbursedSalary.toLocaleString('en-IN')}</strong>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        resultsDiv.innerHTML = finalHTML;
+    }
+
+    // --- UI Interactions ---
+    function toggleCalendar(index) {
+        const calDiv = document.getElementById(`cal-${index}`);
+        const btn = document.querySelector(`#actions-${index} .btn-calendar`);
+        if (calDiv.style.display === 'none' || calDiv.style.display === '') {
+            calDiv.style.display = 'block';
+            btn.innerHTML = '📅 Hide Calendar';
+        } else {
+            calDiv.style.display = 'none';
+            btn.innerHTML = '📅 Show Calendar';
+        }
+    }
+
+    function exportPDF(index, name) {
+        const element = document.getElementById(`emp-card-${index}`);
+        const actionsDiv = document.getElementById(`actions-${index}`);
+        const calDiv = document.getElementById(`cal-${index}`);
+        const calBtn = document.querySelector(`#actions-${index} .btn-calendar`);
+        
+        const originalCalDisplay = calDiv.style.display;
+        calDiv.style.display = 'block'; 
+        actionsDiv.style.display = 'none';
+        
+        const opt = {
+            margin:       0.3,
+            filename:     `${name.replace(/\s+/g, '_')}_Salary_Slip.pdf`,
+            image:        { type: 'jpeg', quality: 1 },
+            html2canvas:  { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+        
+        setTimeout(() => {
+            if (window.html2pdf) {
+                html2pdf().set(opt).from(element).save().then(() => {
+                    actionsDiv.style.display = 'flex';
+                    calDiv.style.display = originalCalDisplay;
+                    calBtn.innerHTML = (originalCalDisplay === 'block') ? '📅 Hide Calendar' : '📅 Show Calendar';
+                });
+            } else {
+                alert('PDF Library failed to load. Please ensure you have an internet connection.');
+                actionsDiv.style.display = 'flex';
+                calDiv.style.display = originalCalDisplay;
+            }
+        }, 300); 
+    }
+</script>
+
+</body>
+</html>
